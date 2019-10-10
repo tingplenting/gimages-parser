@@ -2,6 +2,10 @@ import re
 import requests
 import json
 
+from functools import partial
+from multiprocessing import Pool
+from get_image import download_image
+
 def get_google_image(term):
   headers =  {
     "User-Agent": "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.73 Safari/537.36",
@@ -18,22 +22,31 @@ def get_google_image(term):
 
   r = requests.get(url, headers=headers)
   if r.status_code == 200:
-    return r.content.decode('utf-8')
+    content = r.content.decode('utf-8')
+
+    find_id = re.findall(r'{[^{}]*?"id".*?}', content, re.I | re.M)
+    img_url = []
+
+    for data in find_id:
+
+      item = json.loads(data)
+      h = item['oh']
+      w = item['ow']
+      u = item['ou']
+      if h > w and h >= 1000 and re.match(r'^https?://(?:[a-z0-9\-]+\.)+[a-z]{2,6}(?:/[^/#?]+)+\.(?:jpg|gif|png)$',u,re.I):
+        img_url.append(u)
+
+    return img_url
+
   return False
 
-term = "floral+wallpaper"
-content = get_google_image(term)
 
-find_id = re.findall(r'{[^{}]*?"id".*?}', content, re.I | re.M)
-img_url = []
+if __name__ == '__main__':
+  
+  term = "floral+wallpaper"
 
-for data in find_id:
+  folder = "images"
+  urlist = get_google_image(term)
 
-  item = json.loads(data)
-  h = item['oh']
-  w = item['ow']
-  u = item['ou']
-  if h > w and h >= 1000 and re.match(r'^https?://(?:[a-z0-9\-]+\.)+[a-z]{2,6}(?:/[^/#?]+)+\.(?:jpg|gif|png)$',u,re.I):
-    img_url.append(u)
-
-print(img_url)
+  p = Pool(4)
+  p.map(partial(download_image, folder=folder), urlist)
