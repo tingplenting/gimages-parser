@@ -1,2 +1,3 @@
-# gimages-parser
-get google image url
+# Google Image Parser
+
+get image urls from google image
